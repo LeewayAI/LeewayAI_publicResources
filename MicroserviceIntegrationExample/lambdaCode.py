@@ -121,3 +121,9 @@ def lambda_handler(event, context):
         'message': finalResult
     }
     return response
+
+    #####################################################################
+    # Error Handling
+    #
+    # In the case of an API or database error, you'll want to show end users a standard message on the frontend instead 
+    # of the error. A standard message may be "Sorry, we were unable to process your request at this time. Please try again later."
