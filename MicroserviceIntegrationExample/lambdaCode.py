@@ -67,63 +67,65 @@ def lambda_handler(event, context):
     querySQLJson = json.loads(response.text)
 
     # get the value for result attribute of the above json object
-    sqlQuery = querySQLJson["result"]
+    if querySQLJson["statusCode"] == 200:
+        sqlQuery = querySQLJson["result"]
+        # statusCode 200 ensures that for all correct parameter, a successful response containing the SQL query was generated    
+        # Now SQL query is ready! Time to establish connection with your Pre-Existing Database so that the query can be executed and results can be returned
+        # Replace the placeholder values with your RDS or Pre-existing databse instance details.
+        # Again for best practices they can be stored securely but for now its out of scope for this example
+        host_value = "<Database Endpoint>"
+        port_value = "<Port Number>"
+        database_value = "<Databse Name>"
+        user_value = "<Username>"
+        password_value = "<Password for that username>"
 
-    # Now SQL query is ready! Time to establish connection with your Pre-Existing Database so that the query can be executed and results can be returned
-    # Replace the placeholder values with your RDS or Pre-existing databse instance details.
-    # Again for best practices they can be stored securely but for now its out of scope for this example
-    host_value = "<Database Endpoint>"
-    port_value = "<Port Number>"
-    database_value = "<Databse Name>"
-    user_value = "<Username>"
-    password_value = "<Password for that username>"
+        # Establish a connection to your Database using the connector
+        # (this example only demonstrates for MYSQL and POSTGRESQL equivalent connector can be used)
+        connection = mysql.connector.connect(
+            host=host_value,
+            user=user_value,
+            password=password_value,
+            database=database_value
+        )
 
-    # Establish a connection to your Database using the connector
-    # (this example only demonstrates for MYSQL and POSTGRESQL equivalent connector can be used)
-    connection = mysql.connector.connect(
-        host=host_value,
-        user=user_value,
-        password=password_value,
-        database=database_value
-    )
+        # creating an object that represents a database cursor in the MySQL Connector/Python library.
+        # A cursor is used to execute SQL statements and retrieve data from the MySQL database.
+        cursor = connection.cursor()
 
-    # creating an object that represents a database cursor in the MySQL Connector/Python library.
-    # A cursor is used to execute SQL statements and retrieve data from the MySQL database.
-    cursor = connection.cursor()
+        # Execute your Leeway returned query in your database
+        cursor.execute(sqlQuery)
 
-    # Execute your Leeway returned query in your database
-    cursor.execute(sqlQuery)
+        # Fetch all rows from the result set
+        rows = cursor.fetchall()
 
-    # Fetch all rows from the result set
-    rows = cursor.fetchall()
+        #####################################################################
+        # A very basic example of post processing would be to return the integer if the result obtained is
+        # just a number for example with queries stated like "How many", "Number of ". Moreover, return entire rows of data
+        # as a list of rows where each row is a tuple and print each row. Also, print "No result found" if no data matching
+        # the query existed in DB.
+        # Again post-processing could be done in a number of ways and the below code
+        # is a basic example and might have its own limitations
 
-    #####################################################################
-    # A very basic example of post processing would be to return the integer if the result obtained is
-    # just a number for example with queries stated like "How many", "Number of ". Moreover, return entire rows of data
-    # as a list of rows where each row is a tuple and print each row. Also, print "No result found" if no data matching
-    # the query existed in DB.
-    # Again post-processing could be done in a number of ways and the below code
-    # is a basic example and might have its own limitations
-
-    if "COUNT" in sqlQuery:
-        finalResult = rows[0][0]
-        print(finalResult)
-    else:
         if len(rows) != 0:
-            finalResult = rows
-            for row in rows:
-                print(row)
+            if len(rows) == 1:
+                if len(rows[0]) == 1:
+                    resVal = rows[0][0]
+                    print(rows[0][0])
+            else:
+                resVal = row
+                for row in rows:
+                    print(row)
         else:
-            finalResult = "No result found"
-            print(finalResult)
-    response = {
-        'Status': "Sucessful",
-        'message': finalResult
-    }
-    return response
+            resVal = None
+            print("No results found")
+        # Here developers can add code to process resVal however they want
+    else:
+        # check the message returned to know what why your call wasnt successful
+        # and return end user with adequate response
+        print(querySQLJson["message"])
 
     #####################################################################
     # Error Handling
     #
-    # In the case of an API or database error, you'll want to show end users a standard message on the frontend instead 
+    # In the case of an API or database error, you'll want to show end users a standard message on the frontend instead
     # of the error. A standard message may be "Sorry, we were unable to process your request at this time. Please try again later."
